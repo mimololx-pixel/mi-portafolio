@@ -207,7 +207,7 @@
   <!-- ═══════════════════════════════════════════════
        NAVBAR
   ════════════════════════════════════════════════ -->
-  <nav class="fixed top-0 left-0 right-0 z-40 border-b border-[#1e1e1e] bg-[#0a0a0aee] backdrop-blur-sm">
+  <nav id="main-nav" class="fixed top-0 left-0 right-0 z-40 border-b border-[#1e1e1e] bg-[#0a0a0aee] backdrop-blur-sm transition-all duration-500">
     <div class="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
       <span class="text-[#00ffff] font-bold tracking-widest text-sm">
         &gt; JHEYSON_DEV<span class="animate-pulse">_</span>
@@ -467,6 +467,24 @@
 
     // Arranca cuando el DOM está listo, con delay para que el fadeUp se note
     window.addEventListener('DOMContentLoaded', () => setTimeout(type, 900));
+
+    // ── Navbar hide/show on scroll ──────────────────
+    (function () {
+      const nav = document.getElementById('main-nav');
+      let lastY = window.scrollY;
+
+      window.addEventListener('scroll', () => {
+        const currentY = window.scrollY;
+        if (currentY > lastY && currentY > 60) {
+          // Scrolling down → ocultar
+          nav.style.transform = 'translateY(-100%)';
+        } else {
+          // Scrolling up → mostrar
+          nav.style.transform = 'translateY(0)';
+        }
+        lastY = currentY;
+      }, { passive: true });
+    })();
 
     // ── Smooth scroll para los anchors ──────────────
     document.querySelectorAll('a[href^="#"]').forEach(a => {

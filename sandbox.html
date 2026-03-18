@@ -316,11 +316,16 @@
           <p class="text-gray-600 text-xs tracking-widest">TOTAL</p>
           <p class="text-[#32cd32] text-2xl font-bold">$<span id="cart-total">0</span></p>
         </div>
-        <button id="btn-send"
-                class="btn-send px-6 py-3 text-sm font-semibold tracking-widest uppercase"
-                onclick="openModal()" disabled>
-          ▶ Simular Envío a Dueño
-        </button>
+        <div class="flex flex-col items-end gap-1">
+          <button id="btn-send"
+                  class="btn-send px-6 py-3 text-sm font-semibold tracking-widest uppercase"
+                  onclick="openModal()" disabled>
+            ▶ Simular Envío a Dueño
+          </button>
+          <p class="text-[#32cd32] text-[10px] tracking-wide opacity-70">
+            ✨ Al enviar, recibirás una respuesta automática de nuestro sistema de prueba.
+          </p>
+        </div>
       </div>
 
     </div>
@@ -453,6 +458,7 @@
 
       // Texto plano para WhatsApp (saltos de línea reales, encodeURIComponent los convierte a %0A)
       const waText = [
+        'CODECLUTIONS_SANDBOX_ID_2026',
         '🛍️ ¡Nuevo Pedido desde CodeCLutions Demo!',
         '─────────────────────',
         ...lines.map(l => `${l.emoji} ${l.display}`),

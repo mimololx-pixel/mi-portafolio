@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simulador Cassandra Pro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      letter-spacing: 2px;
+      color: #58a6ff;
+      margin-bottom: 40px;
+      text-transform: uppercase;
+    }
+
+    /* --- Círculo central --- */
+    .circle-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+
+    .circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background-color: #2ea043;
+      box-shadow: 0 0 30px #2ea04388;
+      transition: background-color 0.6s ease, box-shadow 0.6s ease;
+      cursor: pointer;
+    }
+
+    .circle.red {
+      background-color: #da3633;
+      box-shadow: 0 0 30px #da363388;
+    }
+
+    .status-label {
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      color: #8b949e;
+    }
+
+    .status-label span {
+      color: #2ea043;
+      font-weight: bold;
+      transition: color 0.4s;
+    }
+
+    .status-label span.red { color: #da3633; }
+
+    /* --- Controles --- */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+
+    button {
+      padding: 8px 22px;
+      border: none;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    #btn-connect    { background-color: #238636; color: #fff; }
+    #btn-disconnect { background-color: #b91c1c; color: #fff; }
+    #btn-clear      { background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+
+    /* --- Historial de logs --- */
+    .log-section {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .log-section h2 {
+      font-size: 0.9rem;
+      letter-spacing: 1.5px;
+      color: #58a6ff;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #21262d;
+      padding-bottom: 6px;
+    }
+
+    #log-box {
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 16px;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #log-box::-webkit-scrollbar { width: 6px; }
+    #log-box::-webkit-scrollbar-track { background: #0d1117; }
+    #log-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .log-entry {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .log-entry.info    { color: #58a6ff; background: #1f2d3d44; }
+    .log-entry.success { color: #2ea043; background: #1a2e1a44; }
+    .log-entry.error   { color: #da3633; background: #2d1a1a44; }
+    .log-entry.warn    { color: #d29922; background: #2d261a44; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- Parpadeo de alerta --- */
+    @keyframes blink-alert {
+      0%,  100% { opacity: 1;   box-shadow: 0 0 40px #da363399; }
+      50%        { opacity: 0.1; box-shadow: 0 0  8px #da363322; }
+    }
+
+    .circle.blinking {
+      animation: blink-alert 0.35s ease-in-out 6;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⬡ Simulador Cassandra Pro</h1>
+
+  <!-- Círculo central -->
+  <div class="circle-wrapper">
+    <div class="circle" id="node-circle"></div>
+    <p class="status-label">Estado del nodo: <span id="status-text">CONECTADO</span></p>
+  </div>
+
+  <!-- Botones -->
+  <div class="controls">
+    <button id="btn-connect">Conectar</button>
+    <button id="btn-disconnect">Desconectar</button>
+    <button id="btn-clear">Limpiar logs</button>
+  </div>
+
+  <!-- Historial de logs -->
+  <div class="log-section">
+    <h2>Historial de Logs</h2>
+    <div id="log-box"></div>
+  </div>
+
+  <script>
+    const circle     = document.getElementById('node-circle');
+    const statusText = document.getElementById('status-text');
+    const logBox     = document.getElementById('log-box');
+
+    // Agrega una entrada al log
+    function addLog(msg, type = 'info') {
+      const now  = new Date();
+      const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${time}]  ${msg}`;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // Estado inicial
+    function setConnected() {
+      circle.classList.remove('red');
+      statusText.classList.remove('red');
+      statusText.textContent = 'CONECTADO';
+      addLog('Nodo conectado al cluster.', 'success');
+    }
+
+    function playErrorBeep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Pitido corto descendente — sonido de error
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type            = 'square';
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.18);
+
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.22);
+    }
+
+    function setDisconnected() {
+      circle.classList.add('red');
+      statusText.classList.add('red');
+      statusText.textContent = 'DESCONECTADO';
+      addLog('Nodo desconectado del cluster.', 'error');
+
+      // Parpadeo de alerta
+      circle.classList.remove('blinking');
+      void circle.offsetWidth;              // fuerza reflow para reiniciar la animación
+      circle.classList.add('blinking');
+      circle.addEventListener('animationend', () => {
+        circle.classList.remove('blinking');
+      }, { once: true });
+
+      // Pitido de error
+      playErrorBeep();
+    }
+
+    document.getElementById('btn-connect').addEventListener('click', setConnected);
+    document.getElementById('btn-disconnect').addEventListener('click', setDisconnected);
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      logBox.innerHTML = '';
+      addLog('Historial limpiado.', 'warn');
+    });
+
+    // ── Log inicial solicitado ──────────────────────────────────────
+    (function initLogs() {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry success';
+      entry.textContent = '[10:00:00]  Nodo conectado a las 10:00';
+      logBox.appendChild(entry);
+
+      addLog('Cassandra Pro — sesión iniciada.', 'info');
+      addLog('Esperando actividad del nodo...', 'warn');
+    })();
+  </script>
+
+</body>
+</html>

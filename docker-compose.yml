@@ -1,0 +1,9 @@
+services:
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra-dev
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "Cluster_U_Jheyson"
+    restart: unless-stopped

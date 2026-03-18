@@ -445,31 +445,44 @@
       const lines = [];
       PRODUCTS.forEach((p, i) => {
         if (quantities[i] > 0) {
-          lines.push(`${p.emoji} ${p.name} ×${quantities[i]}`);
+          const subtotal = fmt(quantities[i] * p.price);
+          lines.push({ display: `${quantities[i]} x ${p.name} — $${subtotal}`, emoji: p.emoji });
         }
       });
       const total = quantities.reduce((sum, q, i) => sum + q * PRODUCTS[i].price, 0);
-      return {
-        text: `Hola, quiero comprar:\n${lines.join('\n')}\n\nTotal: $${fmt(total)}`,
-        total: fmt(total),
-        items: lines,
-      };
+
+      // Texto plano para WhatsApp (saltos de línea reales, encodeURIComponent los convierte a %0A)
+      const waText = [
+        '🛍️ ¡Nuevo Pedido desde CodeCLutions Demo!',
+        '─────────────────────',
+        ...lines.map(l => `${l.emoji} ${l.display}`),
+        '─────────────────────',
+        `💰 Total a Pagar: $${fmt(total)}`,
+        '📍 Método: Despacho a domicilio',
+      ].join('\n');
+
+      return { waText, total: fmt(total), lines };
     }
 
     function openModal() {
-      const { text, total, items } = buildMessage();
+      const { waText, total, lines } = buildMessage();
 
-      // Mostrar mensaje en modal
+      // Mostrar mensaje en modal con formato visual
+      const bodyLines = lines.map(
+        l => `&nbsp;&nbsp;<span class="text-white">${l.emoji} ${l.display}</span>`
+      ).join('<br>');
+
       document.getElementById('modal-message').innerHTML =
-        `<span class="text-[#00ffff]">Mensaje simulado a WhatsApp:</span><br><br>` +
-        `Hola, quiero comprar:<br>` +
-        items.map(l => `&nbsp;&nbsp;${l}`).join('<br>') +
-        `<br><br><span class="text-[#32cd32] font-bold">Total: $${total}</span>`;
+        `<span class="text-[#00ffff] font-bold">🛍️ ¡Nuevo Pedido desde CodeCLutions Demo!</span><br>` +
+        `<span class="text-gray-600">─────────────────────</span><br>` +
+        bodyLines + '<br>' +
+        `<span class="text-gray-600">─────────────────────</span><br>` +
+        `<span class="text-[#32cd32] font-bold">💰 Total a Pagar: $${total}</span><br>` +
+        `<span class="text-gray-400">📍 Método: Despacho a domicilio</span>`;
 
-      // Link real de WhatsApp
-      const encoded = encodeURIComponent(text);
+      // Link WhatsApp con codificación correcta (%0A para saltos de línea)
       document.getElementById('wa-link').href =
-        `https://wa.me/56982802777?text=${encoded}`;
+        `https://wa.me/56982802777?text=${encodeURIComponent(waText)}`;
 
       document.getElementById('modal-overlay').classList.add('active');
       document.body.style.overflow = 'hidden';

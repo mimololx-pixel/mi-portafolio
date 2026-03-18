@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CodeCLutions | Zona de Pruebas</title>
+
+  <!-- Google Fonts: Fira Code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['"Fira Code"', 'monospace'] },
+          colors: {
+            cyan: { neon: '#00ffff' },
+            lime: { neon: '#32cd32' },
+          },
+          keyframes: {
+            fadeUp: {
+              from: { opacity: '0', transform: 'translateY(20px)' },
+              to:   { opacity: '1', transform: 'translateY(0)' },
+            },
+            popIn: {
+              '0%':   { opacity: '0', transform: 'scale(0.85)' },
+              '100%': { opacity: '1', transform: 'scale(1)' },
+            },
+          },
+          animation: {
+            fadeUp: 'fadeUp 0.5s ease forwards',
+            popIn:  'popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Fira Code', monospace;
+      background-color: #0a0a0a;
+      color: #e0e0e0;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 3px,
+        rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.10) 4px
+      );
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    /* Tarjetas producto */
+    .product-card {
+      border: 2px solid #1e1e1e;
+      background: #111111;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .product-card:hover {
+      border-color: #00ffff;
+      box-shadow: 0 0 18px #00ffff33;
+      transform: translateY(-3px);
+    }
+    .product-card.in-cart {
+      border-color: #32cd32;
+      box-shadow: 0 0 14px #32cd3233;
+    }
+
+    /* Botón agregar */
+    .btn-add {
+      border: 1px solid #00ffff;
+      color: #00ffff;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: 'Fira Code', monospace;
+    }
+    .btn-add:hover { background: #00ffff; color: #0a0a0a; }
+
+    /* Botón quitar */
+    .btn-remove {
+      border: 1px solid #ff4444;
+      color: #ff4444;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: 'Fira Code', monospace;
+    }
+    .btn-remove:hover { background: #ff4444; color: #0a0a0a; }
+    .btn-remove:disabled { border-color: #333; color: #333; cursor: not-allowed; }
+
+    /* Botón envío */
+    .btn-send {
+      border: 2px solid #32cd32;
+      color: #32cd32;
+      background: #32cd3211;
+      box-shadow: 0 0 14px #32cd3266, inset 0 0 14px #32cd3211;
+      font-family: 'Fira Code', monospace;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-send:hover:not(:disabled) {
+      background: #32cd32;
+      color: #0a0a0a;
+      box-shadow: 0 0 28px #32cd32;
+    }
+    .btn-send:disabled {
+      border-color: #333;
+      color: #333;
+      background: transparent;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* Modal */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-overlay.active { display: flex; }
+
+    #modal-box {
+      border: 2px solid #32cd32;
+      background: #111;
+      box-shadow: 0 0 40px #32cd3255;
+      max-width: 480px;
+      width: 90%;
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+
+    /* Cart badge */
+    #cart-badge {
+      display: none;
+    }
+    #cart-badge.visible { display: flex; }
+
+    /* Scrollbar mínimo */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 2px; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ═══════════════════════════════════
+       NAVBAR
+  ═══════════════════════════════════════ -->
+  <nav class="fixed top-0 left-0 right-0 z-40 border-b border-[#1e1e1e] bg-[#0a0a0aee] backdrop-blur-sm">
+    <div class="max-w-5xl mx-auto px-6 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <a href="index.html"
+           class="text-gray-500 hover:text-[#00ffff] text-xs tracking-widest transition-colors border border-[#1e1e1e] hover:border-[#00ffff] px-3 py-1">
+          ← VOLVER
+        </a>
+        <span class="text-[#00ffff] font-bold tracking-widest text-sm hidden sm:block">
+          &gt; CODECLUTIONS<span class="animate-pulse">_</span>
+        </span>
+      </div>
+      <!-- Cart indicator -->
+      <div class="flex items-center gap-3">
+        <span class="text-gray-600 text-xs tracking-widest hidden sm:block">// ENTORNO DE PRUEBAS</span>
+        <div id="cart-badge"
+             class="items-center gap-2 border border-[#32cd32] text-[#32cd32] text-xs px-3 py-1 tracking-widest">
+          🛒 <span id="badge-count">0</span> items · $<span id="badge-total">0</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════ -->
+  <header class="pt-28 pb-10 px-6 text-center">
+    <div class="max-w-3xl mx-auto">
+      <p class="text-[#32cd32] text-xs tracking-widest uppercase mb-3 animate-fadeUp">
+        // simulación activa — esto es una demo interactiva
+      </p>
+      <h1 class="text-2xl sm:text-4xl font-bold text-white mb-3 leading-tight animate-fadeUp"
+          style="animation-delay:0.1s; opacity:0; animation-fill-mode:forwards;">
+        CodeCLutions
+        <span class="text-[#00ffff]">|</span>
+        Entorno de Pruebas para tu Negocio
+      </h1>
+      <p class="text-gray-500 text-sm max-w-xl mx-auto leading-relaxed animate-fadeUp"
+         style="animation-delay:0.2s; opacity:0; animation-fill-mode:forwards;">
+        Agrega productos al carrito y simula cómo tu cliente enviaría un pedido
+        directo a tu WhatsApp. Sin registro. Sin costos.
+      </p>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════
+       CATÁLOGO DE PRODUCTOS
+  ═══════════════════════════════════════ -->
+  <main class="max-w-5xl mx-auto px-6 pb-40">
+
+    <div class="mb-8">
+      <p class="text-[#00ffff] text-xs tracking-widest uppercase mb-1">// mini-catálogo</p>
+      <h2 class="text-lg font-bold text-white">Productos Disponibles</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6" id="products-grid">
+
+      <!-- Producto A -->
+      <div class="product-card p-6 flex flex-col gap-4" id="card-0">
+        <div class="text-4xl text-center py-4 bg-[#0d0d0d] border border-[#1e1e1e]">👕</div>
+        <div>
+          <p class="text-[#00ffff] text-xs tracking-widest mb-1">PRODUCTO_A</p>
+          <h3 class="text-white font-bold text-base">Polera Estampada</h3>
+          <p class="text-gray-500 text-xs mt-1 leading-relaxed">
+            100% algodón. Diseño exclusivo. Tallas S–XL disponibles.
+          </p>
+        </div>
+        <div class="mt-auto">
+          <div class="flex justify-between items-center mb-4 pt-3 border-t border-[#1e1e1e]">
+            <span class="text-[#32cd32] font-bold text-lg">$12.990</span>
+            <span class="text-gray-600 text-xs">UNIDAD</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="btn-remove text-xs px-3 py-1" onclick="changeQty(0,-1)" id="rm-0" disabled>−</button>
+            <span class="text-white text-sm font-bold w-6 text-center" id="qty-0">0</span>
+            <button class="btn-add text-xs px-3 py-1" onclick="changeQty(0,1)">+</button>
+            <span class="ml-auto text-xs text-gray-500" id="subtotal-0"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Producto B -->
+      <div class="product-card p-6 flex flex-col gap-4" id="card-1">
+        <div class="text-4xl text-center py-4 bg-[#0d0d0d] border border-[#1e1e1e]">☕</div>
+        <div>
+          <p class="text-[#00ffff] text-xs tracking-widest mb-1">PRODUCTO_B</p>
+          <h3 class="text-white font-bold text-base">Taza Personalizada</h3>
+          <p class="text-gray-500 text-xs mt-1 leading-relaxed">
+            Cerámica 350ml. Logo o nombre impreso. Apta microondas.
+          </p>
+        </div>
+        <div class="mt-auto">
+          <div class="flex justify-between items-center mb-4 pt-3 border-t border-[#1e1e1e]">
+            <span class="text-[#32cd32] font-bold text-lg">$8.490</span>
+            <span class="text-gray-600 text-xs">UNIDAD</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="btn-remove text-xs px-3 py-1" onclick="changeQty(1,-1)" id="rm-1" disabled>−</button>
+            <span class="text-white text-sm font-bold w-6 text-center" id="qty-1">0</span>
+            <button class="btn-add text-xs px-3 py-1" onclick="changeQty(1,1)">+</button>
+            <span class="ml-auto text-xs text-gray-500" id="subtotal-1"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Producto C -->
+      <div class="product-card p-6 flex flex-col gap-4" id="card-2">
+        <div class="text-4xl text-center py-4 bg-[#0d0d0d] border border-[#1e1e1e]">👜</div>
+        <div>
+          <p class="text-[#00ffff] text-xs tracking-widest mb-1">PRODUCTO_C</p>
+          <h3 class="text-white font-bold text-base">Bolso Artesanal</h3>
+          <p class="text-gray-500 text-xs mt-1 leading-relaxed">
+            Tela canvas resistente. Asa larga ajustable. Varios colores.
+          </p>
+        </div>
+        <div class="mt-auto">
+          <div class="flex justify-between items-center mb-4 pt-3 border-t border-[#1e1e1e]">
+            <span class="text-[#32cd32] font-bold text-lg">$19.990</span>
+            <span class="text-gray-600 text-xs">UNIDAD</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="btn-remove text-xs px-3 py-1" onclick="changeQty(2,-1)" id="rm-2" disabled>−</button>
+            <span class="text-white text-sm font-bold w-6 text-center" id="qty-2">0</span>
+            <button class="btn-add text-xs px-3 py-1" onclick="changeQty(2,1)">+</button>
+            <span class="ml-auto text-xs text-gray-500" id="subtotal-2"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════
+       CARRITO STICKY (BOTTOM BAR)
+  ═══════════════════════════════════════ -->
+  <div id="cart-bar"
+       class="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e1e1e] bg-[#0d0d0dee] backdrop-blur-sm
+              transition-all duration-500"
+       style="transform: translateY(100%);">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+
+      <!-- Resumen de items -->
+      <div class="flex-1">
+        <p class="text-[#00ffff] text-xs tracking-widest mb-1">// resumen de pedido</p>
+        <div id="cart-summary" class="text-gray-400 text-xs leading-relaxed"></div>
+      </div>
+
+      <!-- Total + botón -->
+      <div class="flex items-center gap-6 shrink-0">
+        <div class="text-right">
+          <p class="text-gray-600 text-xs tracking-widest">TOTAL</p>
+          <p class="text-[#32cd32] text-2xl font-bold">$<span id="cart-total">0</span></p>
+        </div>
+        <button id="btn-send"
+                class="btn-send px-6 py-3 text-sm font-semibold tracking-widest uppercase"
+                onclick="openModal()" disabled>
+          ▶ Simular Envío a Dueño
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       MODAL DE CONFIRMACIÓN
+  ═══════════════════════════════════════ -->
+  <div id="modal-overlay" onclick="closeModalOutside(event)">
+    <div id="modal-box" class="p-8">
+
+      <div class="flex items-center gap-3 mb-6">
+        <span class="text-3xl">📲</span>
+        <div>
+          <p class="text-[#32cd32] text-xs tracking-widest mb-1">// mensaje generado</p>
+          <h3 class="text-white font-bold text-lg">Simulación de Envío a WhatsApp</h3>
+        </div>
+      </div>
+
+      <!-- Mensaje simulado -->
+      <div class="bg-[#0a0a0a] border border-[#32cd32] p-4 mb-6 text-sm text-gray-300 leading-relaxed"
+           id="modal-message">
+      </div>
+
+      <p class="text-gray-600 text-xs tracking-widest mb-6">
+        // EN PRODUCCIÓN: este botón abre WhatsApp con el mensaje pre-cargado para el dueño de la tienda.
+      </p>
+
+      <div class="flex gap-3 flex-col sm:flex-row">
+        <button onclick="closeModal()"
+                class="flex-1 border border-[#1e1e1e] text-gray-400 hover:border-[#00ffff] hover:text-[#00ffff]
+                       py-2 text-xs tracking-widest uppercase transition-all font-mono cursor-pointer">
+          [ Cerrar ]
+        </button>
+        <a id="wa-link" href="#" target="_blank" rel="noopener"
+           onclick="closeModal()"
+           class="flex-1 text-center border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-[#0a0a0a]
+                  py-2 text-xs tracking-widest uppercase transition-all font-mono">
+          ▶ Abrir WhatsApp Real
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       JS — LÓGICA DE CARRITO
+  ═══════════════════════════════════════ -->
+  <script>
+    const PRODUCTS = [
+      { name: 'Polera Estampada',   price: 12990, emoji: '👕' },
+      { name: 'Taza Personalizada', price: 8490,  emoji: '☕' },
+      { name: 'Bolso Artesanal',    price: 19990, emoji: '👜' },
+    ];
+
+    const quantities = [0, 0, 0];
+
+    function fmt(n) {
+      return n.toLocaleString('es-CL');
+    }
+
+    function changeQty(idx, delta) {
+      quantities[idx] = Math.max(0, quantities[idx] + delta);
+      render();
+    }
+
+    function render() {
+      let totalItems = 0;
+      let totalPrice = 0;
+      const cartLines = [];
+
+      PRODUCTS.forEach((p, i) => {
+        const q = quantities[i];
+
+        // Cantidad en tarjeta
+        document.getElementById(`qty-${i}`).textContent = q;
+
+        // Subtotal en tarjeta
+        const sub = document.getElementById(`subtotal-${i}`);
+        if (q > 0) {
+          sub.textContent = `$${fmt(p.price * q)}`;
+          sub.classList.add('text-[#32cd32]');
+          sub.classList.remove('text-gray-500');
+          document.getElementById(`card-${i}`).classList.add('in-cart');
+        } else {
+          sub.textContent = '';
+          document.getElementById(`card-${i}`).classList.remove('in-cart');
+        }
+
+        // Botón quitar
+        document.getElementById(`rm-${i}`).disabled = (q === 0);
+
+        if (q > 0) {
+          totalItems += q;
+          totalPrice += p.price * q;
+          cartLines.push(`${p.emoji} ${p.name} ×${q} — $${fmt(p.price * q)}`);
+        }
+      });
+
+      // Cart bar
+      const bar = document.getElementById('cart-bar');
+      bar.style.transform = totalItems > 0 ? 'translateY(0)' : 'translateY(100%)';
+
+      // Resumen dentro del bar
+      document.getElementById('cart-summary').innerHTML =
+        cartLines.map(l => `<span class="block">▸ ${l}</span>`).join('');
+
+      // Total
+      document.getElementById('cart-total').textContent = fmt(totalPrice);
+
+      // Badge en nav
+      const badge = document.getElementById('cart-badge');
+      document.getElementById('badge-count').textContent = totalItems;
+      document.getElementById('badge-total').textContent = fmt(totalPrice);
+      totalItems > 0 ? badge.classList.add('visible') : badge.classList.remove('visible');
+
+      // Botón envío
+      document.getElementById('btn-send').disabled = (totalItems === 0);
+    }
+
+    function buildMessage() {
+      const lines = [];
+      PRODUCTS.forEach((p, i) => {
+        if (quantities[i] > 0) {
+          lines.push(`${p.emoji} ${p.name} ×${quantities[i]}`);
+        }
+      });
+      const total = quantities.reduce((sum, q, i) => sum + q * PRODUCTS[i].price, 0);
+      return {
+        text: `Hola, quiero comprar:\n${lines.join('\n')}\n\nTotal: $${fmt(total)}`,
+        total: fmt(total),
+        items: lines,
+      };
+    }
+
+    function openModal() {
+      const { text, total, items } = buildMessage();
+
+      // Mostrar mensaje en modal
+      document.getElementById('modal-message').innerHTML =
+        `<span class="text-[#00ffff]">Mensaje simulado a WhatsApp:</span><br><br>` +
+        `Hola, quiero comprar:<br>` +
+        items.map(l => `&nbsp;&nbsp;${l}`).join('<br>') +
+        `<br><br><span class="text-[#32cd32] font-bold">Total: $${total}</span>`;
+
+      // Link real de WhatsApp
+      const encoded = encodeURIComponent(text);
+      document.getElementById('wa-link').href =
+        `https://wa.me/56982802777?text=${encoded}`;
+
+      document.getElementById('modal-overlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function closeModalOutside(e) {
+      if (e.target === document.getElementById('modal-overlay')) closeModal();
+    }
+
+    // Inicializar
+    render();
+  </script>
+
+</body>
+</html>
